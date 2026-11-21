@@ -4,6 +4,10 @@ on:
   schedule:
     # UTC 22:30 周一至周五 = 北京时间次日 06:30（美股收盘后，冬夏令时都覆盖）
     - cron: "30 22 * * 1-5"
+  push:
+    branches: [main]
+    paths-ignore:             # 数据回写不触发，避免自己触发自己
+      - "data/**"
   workflow_dispatch:          # 也可手动点 Run workflow 立即抓一次
 
 concurrency:
