@@ -1,0 +1,42 @@
+name: itub-tracker
+
+on:
+  schedule:
+    # UTC 22:30 周一至周五 = 北京时间次日 06:30（美股收盘后，冬夏令时都覆盖）
+    - cron: "30 22 * * 1-5"
+  workflow_dispatch:          # 也可手动点 Run workflow 立即抓一次
+
+concurrency:
+  group: itub-tracker
+  cancel-in-progress: false
+
+permissions:
+  contents: write             # 需要写回 data/itub.csv
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 抓取 ITUB 行情
+        env:
+          ALERT_PCT: "3"                     # 日涨跌超 ±3% 报警
+          PRICE_UP: "0"                      # 突破某价报警，0=关闭，例如 7.2
+          PRICE_DN: "0"                      # 跌破某价报警，0=关闭，例如 6.0
+          WEBHOOK: ${{ secrets.WEBHOOK }}     # 可选，没配就只记录不推送
+        run: python main.py
+
+      - name: 提交数据
+        if: always()
+        run: |
+          git config user.name  "itub-bot"
+          git config user.email "itub-bot@users.noreply.github.com"
+          git add -A
+          git diff --quiet && git diff --staged --quiet || git commit -m "data: ITUB $(date -u +%F)"
+          git push
